@@ -28,6 +28,7 @@ target_link_libraries(clang-tidy
   clangTidyHICPPModule
   clangTidyLLVMModule
   clangTidyMiscModule
+  clangTidyApplovinModule
   clangTidyModernizeModule
   clangTidyObjCModule
   clangTidyPerformanceModule

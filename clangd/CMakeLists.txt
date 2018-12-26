@@ -80,6 +80,7 @@ add_clang_library(clangDaemon
   clangTidyHICPPModule
   clangTidyLLVMModule
   clangTidyMiscModule
+  clangTidyApplovinModule
   clangTidyModernizeModule
   clangTidyObjCModule
   clangTidyPerformanceModule

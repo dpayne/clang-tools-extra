@@ -66,6 +66,11 @@ extern volatile int MiscModuleAnchorSource;
 static int LLVM_ATTRIBUTE_UNUSED MiscModuleAnchorDestination =
     MiscModuleAnchorSource;
 
+// This anchor is used to force the linker to link the ApplovinModule.
+extern volatile int ApplovinModuleAnchorSource;
+static int LLVM_ATTRIBUTE_UNUSED ApplovinModuleAnchorDestination =
+    ApplovinModuleAnchorSource;
+
 // This anchor is used to force the linker to link the ModernizeModule.
 extern volatile int ModernizeModuleAnchorSource;
 static int LLVM_ATTRIBUTE_UNUSED ModernizeModuleAnchorDestination =

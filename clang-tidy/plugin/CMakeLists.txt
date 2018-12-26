@@ -16,6 +16,7 @@ add_clang_library(clangTidyPlugin
   clangTidyCppCoreGuidelinesModule
   clangTidyFuchsiaModule
   clangTidyGoogleModule
+  clangTidyApplovinModule
   clangTidyHICPPModule
   clangTidyLLVMModule
   clangTidyMiscModule
