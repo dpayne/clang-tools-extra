@@ -24,64 +24,54 @@ const char AlEnabledCheck::EnabledFeatureDiagWording[] =
 const char AlEnabledCheck::DisabledFeatureDiagWording[] =
     "Feature %0 is disabled, consider removing";
 
-namespace {
+void AlEnabledCheck::registerMatchers(ast_matchers::MatchFinder *Finder) {
+  using namespace ast_matchers;
+  Finder->addMatcher(
+      callExpr(allOf(callee(cxxMethodDecl(hasName("__isFeatureEnabled"))),
+                     hasParent(ifStmt().bind("if_stmt")),
+                     hasArgument(0, stringLiteral().bind("feature_name"))))
+          .bind("al_enabled"),
+      this);
+}
 
-class AlEnabledPPCallbacks : public PPCallbacks {
-public:
-  explicit AlEnabledPPCallbacks(AlEnabledCheck &Check, Preprocessor &PP,
-                                SourceManager &SM)
-      : Check(Check), PP(PP), SM(SM) {}
+void AlEnabledCheck::check(
+    const ast_matchers::MatchFinder::MatchResult &Result) {
+  auto *If = Result.Nodes.getNodeAs<IfStmt>("if_stmt");
+  auto *Feature = Result.Nodes.getNodeAs<StringLiteral>("feature_name");
+  auto FeatureStr = Feature->getString();
+  auto Then = If->getThen();
+  auto Else = If->getElse();
 
-  void MacroExpands(const Token &MacroNameTok, const MacroDefinition &MD,
-                    SourceRange Range, const MacroArgs *Args) override;
+  std::string replacement;
+  if (EnabledFeatures.find(FeatureStr) != EnabledFeatures.end()) {
+    auto Diag = diag(If->getBeginLoc(), EnabledFeatureDiagWording)
+                << FeatureStr;
+    SourceRange AlEnabledRange{If->getBeginLoc(), Then->getBeginLoc()};
+    Diag << clang::FixItHint::CreateRemoval(AlEnabledRange);
 
-private:
-  AlEnabledCheck &Check;
-  Preprocessor &PP;
-  SourceManager &SM;
-};
-} // namespace
+    auto EndLoc = If->getEndLoc();
+    if (Else != nullptr) {
+      EndLoc = Else->getEndLoc();
+    }
 
-void AlEnabledPPCallbacks::MacroExpands(const Token &MacroNameTok,
-                                        const MacroDefinition &MD,
-                                        SourceRange Range,
-                                        const MacroArgs *Args) {
-  const auto *II = MacroNameTok.getIdentifierInfo();
-  if (!II)
-    return;
+    SourceRange RemovalRange{Then->getEndLoc(), EndLoc};
+    Diag << clang::FixItHint::CreateRemoval(RemovalRange);
+  } else if (DisabledFeatures.find(FeatureStr) != DisabledFeatures.end()) {
 
-  if (II->getName() == "AL_ENABLED") {
-    if (Args->getNumMacroArguments() > 0) {
-      const auto *ResultArgToks = Args->getUnexpArgument(0);
-      if (ResultArgToks->isNot(tok::eof)) {
-        const auto FirstArg = *ResultArgToks;
-        if (tok::isStringLiteral(FirstArg.getKind())) {
-          bool Invalid = false;
-          std::string TokStr = PP.getSpelling(FirstArg, &Invalid);
-          if (!Invalid) {
-            std::string Str = Lexer::Stringify(TokStr);
-            if (Str.size() >= 4) {
-              if (Str.substr(0, 2) == "\\\"") {
-                Str = Str.substr(2);
-              }
+    auto Diag = diag(If->getBeginLoc(), DisabledFeatureDiagWording)
+                << FeatureStr;
 
-              if (Str.substr(Str.size() - 2) == "\\\"") {
-                Str = Str.substr(0, Str.size() - 2);
-              }
-            }
+    auto EndLoc = If->getEndLoc();
+    if (Else != nullptr) {
+      EndLoc = Else->getBeginLoc();
+    }
+    SourceRange Range{If->getBeginLoc(), EndLoc};
+    Diag << clang::FixItHint::CreateRemoval(Range);
 
-            if (Check.EnabledFeatures.find(Str) !=
-                Check.EnabledFeatures.end()) {
-              Check.diag(Range.getBegin(), Check.EnabledFeatureDiagWording)
-                  << Str;
-            } else if (Check.DisabledFeatures.find(Str) !=
-                       Check.DisabledFeatures.end()) {
-              Check.diag(Range.getBegin(), Check.DisabledFeatureDiagWording)
-                  << Str;
-            }
-          }
-        }
-      }
+    if (Else != nullptr) {
+      // Remove the trailing '}'
+      SourceRange EndRange{Else->getEndLoc(), If->getEndLoc()};
+      Diag << clang::FixItHint::CreateRemoval(EndRange);
     }
   }
 }
@@ -91,14 +81,6 @@ void AlEnabledCheck::storeOptions(ClangTidyOptions::OptionMap &Opts) {
   Options.store(Opts, "DisabledFeatures", RawStringDisabledFeatures);
 }
 
-void AlEnabledCheck::registerPPCallbacks(CompilerInstance &Compiler) {
-  if (!getLangOpts().CPlusPlus)
-    return;
-
-  Compiler.getPreprocessor().addPPCallbacks(
-      llvm::make_unique<AlEnabledPPCallbacks>(*this, Compiler.getPreprocessor(),
-                                              Compiler.getSourceManager()));
-}
 } // namespace applovin
 } // namespace tidy
 } // namespace clang

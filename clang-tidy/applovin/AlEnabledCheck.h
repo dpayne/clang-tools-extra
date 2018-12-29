@@ -12,8 +12,8 @@
 
 #include "../ClangTidy.h"
 #include "clang/Frontend/CompilerInstance.h"
-#include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/SmallSet.h"
+#include "llvm/ADT/SmallVector.h"
 #include <iostream>
 
 namespace clang {
@@ -30,29 +30,26 @@ public:
       : ClangTidyCheck(Name, Context),
         RawStringEnabledFeatures(
             Options.getLocalOrGlobal("EnabledFeatures", "")),
-        RawStringDisabledFeatures(Options.getLocalOrGlobal(
-            "DisabledFeatures", "")) {
-            SmallVector<llvm::StringRef, 10> EnabledFeaturesVec;
-            SmallVector<llvm::StringRef, 10> DisabledFeaturesVec;
+        RawStringDisabledFeatures(
+            Options.getLocalOrGlobal("DisabledFeatures", "")) {
+    SmallVector<llvm::StringRef, 10> EnabledFeaturesVec;
+    SmallVector<llvm::StringRef, 10> DisabledFeaturesVec;
 
-            StringRef(RawStringEnabledFeatures).split(EnabledFeaturesVec, ',');
-            StringRef(RawStringDisabledFeatures).split(DisabledFeaturesVec, ',');
+    StringRef(RawStringEnabledFeatures).split(EnabledFeaturesVec, ',');
+    StringRef(RawStringDisabledFeatures).split(DisabledFeaturesVec, ',');
 
-            for ( const auto & feature : EnabledFeaturesVec )
-            {
-                std::cerr << feature.str() << std::endl;
-                EnabledFeatures.insert( feature );
-            }
+    for (const auto &feature : EnabledFeaturesVec) {
+      EnabledFeatures.insert(feature);
+    }
 
-            for ( const auto & feature : DisabledFeaturesVec )
-            {
-                std::cerr << feature.str() << std::endl;
-                DisabledFeatures.insert( feature );
-            }
-        }
+    for (const auto &feature : DisabledFeaturesVec) {
+      DisabledFeatures.insert(feature);
+    }
+  }
 
-  void registerPPCallbacks(CompilerInstance &Compiler) override;
+  void registerMatchers(ast_matchers::MatchFinder *Finder) override;
   void storeOptions(ClangTidyOptions::OptionMap &Opts) override;
+  void check(const ast_matchers::MatchFinder::MatchResult &Result) override;
 
   static const char EnabledFeatureDiagWording[];
   static const char DisabledFeatureDiagWording[];
